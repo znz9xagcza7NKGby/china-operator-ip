@@ -9,8 +9,13 @@ for file in operator/*.conf; do
 	operator=${operator##*/}
 	log_info "generating IP list of $operator ..."
 	get_asn $file
-	get_asn $file | xargs bgptools -b rib.txt  | cidr-merger -s | grep -Fv : | cat > result/${operator}.txt  &
-	get_asn $file | xargs bgptools -b rib6.txt | grep -v '^::/0$' | cidr-merger -s | grep -F  : | cat > result/${operator}6.txt &
+	(
+	    raw_result=$(mktemp)
+		get_asn $file | xargs bgptools -b rib.txt > ${raw_result}
+		cidr-merger -s < ${raw_result} | grep -Fv : | cat > result/${operator}.txt
+		grep -v '^::/0$' < ${raw_result} | cidr-merger -s | grep -F  : | cat > result/${operator}6.txt
+		rm -f "${raw_result}"
+	) &
 done
 
 wait_exit
